@@ -1,64 +1,89 @@
 package UT1_A4;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.Arrays;
 import java.util.Scanner;
 
 public class UT1_A4_Sanchez_Raul {
     public static void main(String[] args) {
-        // Pedir a usuario una ruta a un directorio
+        // Pide al usuario la ruta absoluta del fichero csv
         Scanner sc = new Scanner(System.in);
-        System.out.print("Introduce la ruta: ");
-        String ruta_directorio = sc.nextLine();
-        File directorio = new File(ruta_directorio);
+        System.out.print("Introduce la ruta del fichero: ");
+        String rutaFiche = sc.nextLine();
+        File fichero = new File(rutaFiche);
 
-        // Listar el contenido del directorio
-        if (directorio.exists() & directorio.isDirectory()){
-            System.out.println(Arrays.toString(directorio.list()));
-        } else {
-            System.out.println("El directorio no existe");
+        // Comprueba si existe o si es un directorio
+        if (!fichero.exists() || fichero.isDirectory()) {
+            System.out.println("El fichero no existe o es un directorio.");
+            return;
         }
 
-        // Pedir el nombre de un fichero (con extension) contenido en esa ruta / comprobar si existe
-        System.out.print("Introduce el nombre del fichero: ");
-        String fichero_in = sc.nextLine();
-        String ruta_abs_fichero = ruta_directorio + "\\" + fichero_in;
-        System.out.println(ruta_abs_fichero);
-        File fichero = new File(ruta_abs_fichero);
-        if (fichero.exists()){
-            System.out.println("El fichero " + fichero_in + " existe");
-        }
+        int numCampos = 0;
+        int posEdad = -1;
+        int sumEdades = 0;
+        int totalPersonas = 0;
 
         // Comprobar si el archivo es CSV
-        if (fichero.getName().toLowerCase().endsWith(".csv")){
-            try (FileReader fr = new FileReader(ruta_abs_fichero);
-                 BufferedReader br = new BufferedReader(fr)) {
-                String linea = br.readLine();
+        try (BufferedReader br = new BufferedReader(new FileReader(fichero))) {
 
-                String[] num_campos = linea.split(";");
-                System.out.println("El fichero CSV tiene " + num_campos.length + " campos");
+            String primeraLinea = br.readLine();
 
-            } catch (IOException e) {
-                System.out.println("Ocurrió un error al leer el archivo: " + e.getMessage());
-            }
+            if (primeraLinea != null) {
+                String[] cabecera = primeraLinea.split(";");
+                numCampos = cabecera.length;
+                System.out.println("El fichero CSV tiene " + numCampos + " campos.");
 
-            try (FileReader fr = new FileReader(ruta_abs_fichero);
-                 BufferedReader br = new BufferedReader(fr)) {
-
-                String linea = br.readLine();
-                String[] num_campos = linea.split(";");
-
-                for (int i = 0; i < num_campos.length; i++) {
-
+                // Buscar si existe el campo edad
+                for (int i = 0; i < cabecera.length; i++) {
+                    if (cabecera[i].trim().equalsIgnoreCase("edad")) {
+                        posEdad = i;
+                        break;
+                    }
                 }
 
-            } catch (IOException e) {
-                System.out.println("Ocurrió un error al leer el archivo: " + e.getMessage());
+                // Si existe edad leemos las siguientes filas para calcular la media
+                if (posEdad != -1) {
+                    String ln;
+                    while ((ln = br.readLine()) != null) {
+                        String[] edades = ln.split(";");
+                        if (edades.length > posEdad) {
+                            sumEdades += Integer.parseInt(edades[posEdad].trim());
+                            totalPersonas++;
+                        }
+                    }
+                }
             }
+
+        } catch (IOException e) {
+            System.out.println("Error al leer el fichero");
+            return;
         }
 
+        // Escribe los resultados en resultado.csv en la misma ruta
+        File dcResul = fichero.getParentFile();
+        File fichResul = new File(dcResul, "resultado.csv");
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(fichResul))) {
+
+            if (posEdad != -1 && totalPersonas > 0) {
+                double mediaEdad = (double) sumEdades / totalPersonas;
+                bw.write("num_campos;media_edad");
+                bw.newLine();
+                bw.write(numCampos + ";" + mediaEdad);
+            } else { // si no hay edad da igualmente el numero de campos
+                bw.write("num_campos");
+                bw.newLine();
+                bw.write(String.valueOf(numCampos));
+            }
+
+            System.out.println("Resultados guardados en: " + fichResul.getAbsolutePath());
+
+        } catch (IOException e) {
+            System.out.println("Error al escribir el fichero resultado");
+        }
+
+        sc.close();
     }
+
+
 }
